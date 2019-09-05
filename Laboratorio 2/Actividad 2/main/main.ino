@@ -2,6 +2,7 @@
 #include "device.h"
 #include "fnqueue.h"
 
+//Repositorio Github
 //Inicializa la library con los numeros de interfaces de los pines.
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 
