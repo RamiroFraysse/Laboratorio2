@@ -11,15 +11,8 @@ int brightness = 150;
 const int numRows = 2;
 const int numCols = 16;
 
-// These constants won't change. They're used to give names to the pins used:
-const int analogInPin = A0;  // Analog input pin that the potentiometer is attached to
-const int analogOutPin = 10; // Analog output pin that the LED brightness is attached to
 
-void lcdCleanFila(int fila){
-  //Imprime 16 espacios en la fila indicada (0 o 1)
-  lcd.setCursor(0, fila);
-  lcd.print("                ");
-}
+const int analogOutPin = 10; // Analog output pin that the LED brightness is attached to
 
 void select_key_down(){
 

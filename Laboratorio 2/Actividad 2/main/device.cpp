@@ -5,8 +5,6 @@
 
 
 volatile int adcValue;
-volatile uint8_t low, high;
-volatile int conversionFlag = 0;
 int canal;
 
 //Handler key down functions
@@ -25,9 +23,9 @@ void (*handler_key_up_tecla_select)();
 //Used to convert adcValue to key number
 int adc_key_val[5] ={30, 180, 360, 535, 760};
 int NUM_KEYS = 5;
-
+static int deboucing=0;
 // Variables auxiliares
-int lastKeyDown = -1;
+int lastKeyDown = -1; //variable utilizada para recordar la ultima tecla presionada
 int teclaPresionada = -1;
 
 //Encabezado de funciones
@@ -39,21 +37,11 @@ int adc_init(void){
     int exito = 0;
     canal = 0;
     int tensionRef =1;
-    if(canal >= 0 && canal <6){
-
+   
         ADMUX |= canal;
-        if(tensionRef >= 0 && tensionRef < 4){
-            if(tensionRef == 3){
-                ADMUX |= (1 << REFS1) | (1 << REFS0);
-            }
-            else{
-                ADMUX |= (tensionRef << 6);
-            }
-        }
-        else{ //Tension de referencia por default
-            ADMUX |= (1 << REFS0);
-            ADMUX &= ~(1 << REFS1);
-        }
+     
+        ADMUX |= (tensionRef << 6);
+           
         //PRR – Power Reduction Register
         //Bit 0 – PRADC: Power Reduction ADC
         //Writing a logic one to this bit shuts down the ADC. The ADC must be disabled before shut down.
@@ -61,18 +49,16 @@ int adc_init(void){
         
         //ADCSRA – ADC Control and Status Register A
         //Bit 7 – ADEN: ADC Enable
-        //Writing this bit to one enables the ADC (this don't start de ADC). 
+        //Por defecto el adc esta apagado para consumir menos,entonces lo prende poniendo el bit a 1.  
         ADCSRA |= (1 << ADEN);
-        //Bits 2:0 – ADPS[2:0]: ADC Prescaler Select Bits
-        //128 Preescaler
+        //Configura el prescaler en 128 para que trabaje con la frecuencia maxima del ADC que es de 125khz
         ADCSRA |= (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
-        //Bit 3 – ADIE: ADC Interrupt Enable (if global interruptions are enable)
+        //Bit 3 – ADIE:habilita las intrerrupciones del adc.
         ADCSRA |= (1 << ADIE);
-        //Bit 5 – ADATE: ADC Auto Trigger Enable
+        //Bit 5 – ADATE: ADC Auto Trigger Enable para que en modo free running comience la conversión.
         ADCSRA |= (1 << ADATE);
 
-        //ADCSRB – ADC Control and Status Register B
-        //Bit 2:0 – ADTS[2:0]: ADC Auto Trigger Source - ADTS2 = 0, ADTS1 = 0, ADTS0 = 0 -> Free Running Mode
+        
         ADCSRB &= ~(1 << ADTS2) & ~(1 << ADTS1) & ~(1 << ADTS0);
 
         //Inicializar Conversion
@@ -80,7 +66,7 @@ int adc_init(void){
         ADCSRA |= (1 << ADSC);
 
         exito = 1;
-    }
+    
     return exito;
 }
 
@@ -150,27 +136,38 @@ void key_up_function(int lastKeyDown){
 
 void ProcesarAdc(){
   //Funcion que determina que tecla fue pulsada.
- 
-  int key = get_key(adcValue);
-  Serial.println("adcValue: "+String(adcValue));
-  if (key != -1){
-    key_down_function(key);
-    lastKeyDown = key;
-  }
-  else{
-    if(lastKeyDown != -1){
-      key_up_function(lastKeyDown);
-    }
-  }
 
+
+      int key = get_key(adcValue);
+      Serial.println("adcValue: "+String(adcValue));
+      if (key != -1){
+        key_down_function(key);
+        lastKeyDown = key;
+      }
+      else{
+        if(lastKeyDown != -1){
+          key_up_function(lastKeyDown);
+        }
+      }
+      
+ 
 }
 
 ISR(ADC_vect){ //ADC conversion complete
+  deboucing++;
+  if(deboucing==50)
+  {
+    uint8_t low, high;
     low = ADCL;
     high = ADCH;
     adcValue = (high << 8) | low;
-    conversionFlag = 1;
+  }
+  if(deboucing==100){
     fnqueue_add(ProcesarAdc);
+  }
+  if(deboucing == 150){
+    deboucing=0;
+  }
 }
 
 void key_down_callback(void (*handler)(), int tecla){
