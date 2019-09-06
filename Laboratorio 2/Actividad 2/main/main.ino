@@ -79,7 +79,7 @@ void setup() {
   teclado_init();
   fnqueue_init();
 
-  //Estas funciones se van a ejecutar cuando el conversor dispare la interrupcion.
+  //Cuando se atienda la función encolada se va a ejecutar el callback correspondiente
   key_down_callback(select_key_down, TECLA_SELECT);
   key_down_callback(left_key_down, TECLA_LEFT);
   key_down_callback(right_key_down, TECLA_RIGHT);

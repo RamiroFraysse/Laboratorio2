@@ -9,11 +9,6 @@ volatile uint8_t low, high;
 volatile int conversionFlag = 0;
 int canal;
 
-//For pin change interrupts
-volatile uint8_t portChistory = 0xFF; // default is high because the pull-up
-volatile int low_to_high_PINC0 = 0;
-volatile int high_to_low_PINC0 = 0;
-
 //Handler key down functions
 void (*handler_key_down_tecla_up)();
 void (*handler_key_down_tecla_down)();
@@ -35,12 +30,10 @@ int NUM_KEYS = 5;
 int lastKeyDown = -1;
 int teclaPresionada = -1;
 
-//Head Functions
+//Encabezado de funciones
 int get_key(int adcValue);
 void key_down_function(int teclaPresionada);
 void key_up_function(int lastKeyDown);
-void call_lcd_key(int adcValue);
-int get_key(int input);
 
 int adc_init(void){
     int exito = 0;
