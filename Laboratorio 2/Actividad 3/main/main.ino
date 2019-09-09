@@ -5,7 +5,7 @@
 //Inicializa la library con los numeros de interfaces de los pines.
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 
-int brightness = 80; //brillo del display LCD
+int brightness = 204; //brillo del display LCD
 volatile int dimmer; //cuenta tiempo transcurrido ante inactividad o al presionar select
 volatile int pressingSelect; //indica si se esta presionando la tecla select
 volatile int positionCounter=0;// scroll del mensaje inicial
@@ -24,7 +24,7 @@ volatile int savepos; //posición donde se almacena el ultimo tiempo a guardar
 volatile int visorpos; //posición del tiempo visualizado en MVT
 const int analogOutPin = 10; // Analog output pin that the LED brightness is attached to
 
-int estadoActual = 0; //de 0 a 4, el 0 es para mostrar el mensaje inicial
+int estadoActual = 0; //de 0 a 4, el 0 es para mostrar el mensaje inicial, el 1 MCA, 2 MP, 3 MVT, 4 MAD.
 volatile int timerON = 0; //estado del timer
 
 //presionar tecla select
@@ -85,7 +85,7 @@ else
       {
         dimmer=0;
           if (brightness>0)
-            brightness -= 20;
+            brightness -= 51;
             delay(100);
           analogWrite(10, brightness);
       }
@@ -124,8 +124,8 @@ if(estadoActual == 1){
       if (estadoActual ==4)
       {
         dimmer=0;
-        if (brightness<100)
-          brightness += 20;
+        if (brightness<255)
+          brightness += 51;
           delay(100);
         analogWrite(10, brightness);
       }
@@ -191,9 +191,7 @@ void cleanDisplay()
 }
 
 void setup() {
-  Serial.begin(9600);
   //Setup timer2
-  //sei();
   cli();
   //set timer2 interrupt at 100Hz (Interrupciones cada 0,01s)
   TCCR2A = 0;// set entire TCCR2A register to 0
@@ -259,11 +257,11 @@ void setup() {
 void resetTimer(){
   cs = 0;
   s = 0;
-  noInterrupts();
+  cli();
   TIMSK2 &= ~(1 << OCIE2A); //Disable timer compare interrupt
   TCNT2  = 0;//initialize counter value to 0
   TIMSK2 |= (1 << OCIE2A); //Enable timer compare interrupt
-  interrupts();
+  sei();
   timerON = 1;
 }
 
@@ -313,7 +311,7 @@ void imprimirInicio(void)
   lcd.print("Sistemas Embebidos-2do Cuatrimestre 2019");
   lcd.setCursor(0, 1);
   lcd.print("Laboratorio 2 - Com: Fraysse / Carignano");
-  //for (int positionCounter = 0; positionCounter < 24; positionCounter++) {
+  
   if (positionCounter <24)
   {    
       // scroll one position left:
@@ -321,6 +319,12 @@ void imprimirInicio(void)
       positionCounter++;
       // wait a bit:
       delay(400);       
+  }else{
+    if (positionCounter<48){
+      lcd.scrollDisplayRight();
+      positionCounter++;
+      delay(400);  
+    }
   }
   
 }
@@ -351,18 +355,22 @@ void mostrarEstado(){
 //Imprime en display información sobre el brillo del mismo
 void imprimirBrillo(){  
   lcd.setCursor(0, 1);
+  //7 espacios en blanco
   lcd.print("       ");
-  lcd.print(brightness);
-  if(brightness == 100){
+  //1, 2 o 3
+  lcd.print(brightness*100/255);
+  //Si son 3 cifras
+  if(brightness == 255){
     lcd.setCursor(10, 1);
+    //6 caracteres mas
     lcd.print("%     ");
   }
-   else
-     if(brightness > 5){
+   else//son 2 cifras
+     if(brightness*100/255 > 9){
        lcd.setCursor(9, 1);
        lcd.print("%     ");
      }
-     else{
+     else{//es de 1 cifra
        lcd.setCursor(8, 1);
        lcd.print("%     ");
      }
