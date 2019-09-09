@@ -10,8 +10,15 @@ int canal;
 //Handler key down functions
 void (*handler_key_down_tecla_up)();
 void (*handler_key_down_tecla_down)();
+void (*handler_key_down_tecla_right)();
+void (*handler_key_down_tecla_left)();
 void (*handler_key_down_tecla_select)();
-
+//Handler key up functions
+void (*handler_key_up_tecla_up)();
+void (*handler_key_up_tecla_down)();
+void (*handler_key_up_tecla_right)();
+void (*handler_key_up_tecla_left)();
+void (*handler_key_up_tecla_select)();
 
 //Used to convert adcValue to key number
 int adc_key_val[5] ={30, 180, 360, 535, 760};
@@ -24,6 +31,7 @@ int teclaPresionada = -1;
 //Encabezado de funciones
 int get_key(int adcValue);
 void key_down_function(int teclaPresionada);
+void key_up_function(int lastKeyDown);
 
 int adc_init(void){
     int exito = 0;
@@ -93,6 +101,12 @@ void key_down_function(int teclaPresionada){
     case TECLA_DOWN:
       handler_key_down_tecla_down();
       break;
+    case TECLA_LEFT:
+      handler_key_down_tecla_left();
+      break;
+    case TECLA_RIGHT:
+      handler_key_down_tecla_right();
+      break;
     case TECLA_SELECT:
       handler_key_down_tecla_select();
       break;
@@ -100,36 +114,59 @@ void key_down_function(int teclaPresionada){
   }
 }
 
-
+void key_up_function(int lastKeyDown){
+  switch(lastKeyDown){
+    case TECLA_UP:
+      handler_key_up_tecla_up();
+      break;
+    case TECLA_DOWN:
+      handler_key_up_tecla_down();
+      break;
+    case TECLA_LEFT:
+      handler_key_up_tecla_left();
+      break;
+    case TECLA_RIGHT:
+      handler_key_up_tecla_right();
+      break;
+    case TECLA_SELECT:
+      handler_key_up_tecla_select();
+      break;
+  }
+}
 
 void ProcesarAdc(){
   //Funcion que determina que tecla fue pulsada.
 
 
       int key = get_key(adcValue);
-      Serial.println("adcValue: "+String(adcValue));
+      //Serial.println("adcValue: "+String(adcValue));
       if (key != -1){
         key_down_function(key);
         lastKeyDown = key;
       }
-     
+      else{
+        if(lastKeyDown != -1){
+          key_up_function(lastKeyDown);
+          lastKeyDown=-1;
+        }
+      }
       
  
 }
 
 ISR(ADC_vect){ //ADC conversion complete
   deboucing++;
-  if(deboucing==50)
+  if(deboucing==100)
   {
     uint8_t low, high;
     low = ADCL;
     high = ADCH;
     adcValue = (high << 8) | low;
   }
-  if(deboucing==100){
+  if(deboucing==200){
     fnqueue_add(ProcesarAdc);
   }
-  if(deboucing == 150){
+  if(deboucing == 300){
     deboucing=0;
   }
 }
@@ -142,10 +179,36 @@ void key_down_callback(void (*handler)(), int tecla){
     case TECLA_DOWN:
       handler_key_down_tecla_down = handler;
       break;
-    
+    case TECLA_LEFT:
+      handler_key_down_tecla_left = handler;
+      break;
+    case TECLA_RIGHT:
+      handler_key_down_tecla_right = handler;
+      break;
     case TECLA_SELECT:
       handler_key_down_tecla_select = handler;
       break;
   
+  }
+}
+
+void key_up_callback(void (*handler)(), int tecla){
+  switch(tecla){
+    case TECLA_UP:
+      handler_key_up_tecla_up = handler;
+      break;
+    case TECLA_DOWN:
+      handler_key_up_tecla_down = handler;
+      break;
+    case TECLA_LEFT:
+      handler_key_up_tecla_left = handler;
+      break;
+    case TECLA_RIGHT:
+      handler_key_up_tecla_right = handler;
+      break;
+    case TECLA_SELECT:
+      handler_key_up_tecla_select = handler;
+      break;
+
   }
 }

@@ -1,85 +1,274 @@
 #include <LiquidCrystal.h>
 #include "device.h"
 #include "fnqueue.h"
-#include "timer.h"
 
-//Repositorio Github
 //Inicializa la library con los numeros de interfaces de los pines.
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 
-int brillo = 100;
+int brightness = 80; //brillo del display LCD
+volatile int dimmer; //cuenta tiempo transcurrido ante inactividad o al presionar select
+volatile int pressingSelect; //indica si se esta presionando la tecla select
+volatile int positionCounter=0;// scroll del mensaje inicial
+
 //Identifican las celdas del lcd
 const int numRows = 2;
 const int numCols = 16;
-static int modo; //modo 0 MCA, modo 1 MP, modo 2 MVT, modo 3 MAD 
 
-static int posCronX = 4; //Arranca en 4 para que quede centrado
-static int posCronY = 1; //Empieza a imprimir en la columna de abajo.
-static int ms,s,m,cs;
-volatile int tiempos[10][3]; //tiempos guardados tanto los m, cs y s.
+//Posiciones para imprimir cronometro
+volatile int posCronX = 4;
+volatile int posCronY = 1;
+
+int ms,s,m,cs, cs_aux; //representan milisegundos, segundos, minutos, centesimas de segundo
+volatile int tiempos[10][3]; //tiempos guardados
 volatile int savepos; //posición donde se almacena el ultimo tiempo a guardar
 volatile int visorpos; //posición del tiempo visualizado en MVT
-
-
-
 const int analogOutPin = 10; // Analog output pin that the LED brightness is attached to
 
-void select_key_down(){
+int estadoActual = 0; //de 0 a 4, el 0 es para mostrar el mensaje inicial
+volatile int timerON = 0; //estado del timer
 
-  lcd.setCursor(0, 1);//Arranca a escribir en la columna 0 y la fila 1.
-  lcd.print("Select key down ");
-}
-
-void up_key_down(){
-  switch(modo){
-    case 0:
-      modo=1;
-      break;
-    case 1:
-      modo=0;
-      break;
-    case 2:
-      visorpos=(visorpos+1)%10;
-      break;
-    case 3:
-      if(brillo<100)
-         brillo += 20;
-         analogWrite(10, brillo); //Controla intensidad backlight 
-      break;
-  
-  }
-}
-void down_key_down(){
-}
-
-
-void printInicio(void)
+//presionar tecla select
+void select_key_down()
 {
-  lcd.setCursor(0, 0);
-   //40 caracteres
-  //16 ancho del display, es necesario mostrar los otros 24 tambien
-  lcd.print("Sistemas Embebidos-2do Cuatrimestre 2019");
-  lcd.setCursor(0, 1);
-  //40 caracteres
-  lcd.print("Laboratorio 2 - Com: Fraysse / Carignano");
-  for (int positionCounter = 0; positionCounter < 24; positionCounter++) {
-    // scroll one position left:
-    lcd.scrollDisplayLeft(); 
-    // wait a bit:
-    delay(200);
+  pressingSelect=1;      
+}
+
+//presionar tecla left
+void left_key_down(){}
+//presionar tecla right
+void right_key_down(){}
+//presionar tecla up
+void up_key_down(){}
+//presionar tecla down
+void down_key_down(){}
+
+//soltar tecla down
+void down_key_up()
+{
+if (estadoActual == 0)
+{
+  estadoActual = 2;
+  cleanDisplay();
+  mostrarEstado();
+}
+else  
+if (estadoActual ==1 )
+{
+    tiempos[savepos][0]=m;
+    tiempos[savepos][1]=s;
+    tiempos[savepos][2]=cs;
+    savepos=(savepos+1)%10;      
+}
+else
+{
+  if (estadoActual == 2)
+  {
+    tiempos[savepos][0]=m;
+    tiempos[savepos][1]=s;
+    tiempos[savepos][2]=cs;
+    savepos=(savepos+1)%10;
+    ms=0;
+    cs=0;
+    m=0;
+    s=0;  
   }
-  //Espera 2s.
-  delay(2000);
-  for (int positionCounter = 0; positionCounter < 24; positionCounter++) {
-    // scroll one position right:
-    lcd.scrollDisplayRight();   
+  else{
+    if (estadoActual ==3)
+    {
+      visorpos=visorpos-1;
+      if(visorpos<0)
+         visorpos=9;
+    }
+     else
+     {
+     if (estadoActual ==4)
+      {
+        dimmer=0;
+          if (brightness>0)
+            brightness -= 20;
+            delay(100);
+          analogWrite(10, brightness);
+      }
+     }
   }
-  
-  lcd.clear();
+}
 
 }
 
-void printNumero(int num,int x) {
+//soltar tecla up
+void up_key_up(){
+
+if (estadoActual == 0)
+{
+  estadoActual = 2;
+  cleanDisplay();
+}
+else  
+if(estadoActual == 1){
+    estadoActual = 2;
+  }
+  else
+  {
+    if (estadoActual==2)
+    {
+      estadoActual = 1;
+    }
+    else
+    {
+      if (estadoActual== 3)
+      {
+        visorpos=(visorpos+1)%10;  
+      }
+      else
+      {
+      if (estadoActual ==4)
+      {
+        dimmer=0;
+        if (brightness<100)
+          brightness += 20;
+          delay(100);
+        analogWrite(10, brightness);
+      }
+      }
+    }
+    
+  }
+  mostrarEstado();
+}
+
+//soltar tecla left
+void left_key_up(){}
+//soltar tecla right
+void right_key_up(){}
+
+//soltar tecla select
+void select_key_up()
+{
+
+ pressingSelect=0;
+ 
+if (estadoActual == 0)
+{
+  estadoActual = 2;
+  cleanDisplay();
+}
+else  
+  if(estadoActual == 2){
+    if (dimmer<=2)
+    { 
+      estadoActual=3;
+      dimmer=0;
+    }
+    else
+    {
+      estadoActual = 4;  
+      dimmer=0;
+    }    
+  }
+  else
+  {
+    if (estadoActual==3)
+    {
+      estadoActual = 2;
+      cleanDisplay();
+    }
+    else
+    {
+      if (estadoActual==4)
+      {
+        estadoActual = 2;
+        resetTimer();
+      }
+    }      
+  }
+  mostrarEstado();
+}
+
+//limpia el display LCD
+void cleanDisplay()
+{ 
+  lcd.clear();
+}
+
+void setup() {
+  Serial.begin(9600);
+  //Setup timer2
+  //sei();
+  cli();
+  //set timer2 interrupt at 100Hz (Interrupciones cada 0,01s)
+  TCCR2A = 0;// set entire TCCR2A register to 0
+  TCCR2B = 0;// same for TCCR2B
+  TCNT2  = 0;//initialize counter value to 0
+  // set compare match register for 100Hz increments (0,01s)
+  OCR2A = 155.25;// = (16*10^6) / (1024*100) - 1 (must be <256)
+  // turn on CTC mode
+  TCCR2A |= (1 << WGM01);  
+  // Set CS21 bit for 1024 prescaler
+  TCCR2B |= (1 << CS20) | (1 << CS21)| (1 << CS22);  
+  // enable timer compare interrupt
+  TIMSK2 |= (1 << OCIE2A);
+ sei();
+
+  // Setup LCD
+  pinMode(analogOutPin, OUTPUT);
+  lcd.begin(numCols,numRows);
+  analogWrite(analogOutPin, brightness); //Controla intensidad backlight  
+
+  //Inicialización driverTeclado
+  teclado_init();
+  //Inicialización de cola de funciones
+  fnqueue_init();
+
+  //Inicialización de contadores de tiempo
+  cs_aux=0;
+  ms=0;
+  cs=0;
+  m=0;
+  s=0;
+  dimmer=0;
+ 
+  //inicialización de flags  
+  pressingSelect=0;
+  savepos=0;
+  visorpos=0;
+
+  //Inicialización del arreglo que mantiene tiempos guardados
+  int i,j;
+  for(i=0;i<10;i++)
+  {
+    for(j=0;j<3;j++)
+    tiempos[i][j]=0;
+  } 
+
+  //Asociación de funciones al callback
+  key_down_callback(select_key_down, TECLA_SELECT);
+  key_down_callback(left_key_down, TECLA_LEFT);
+  key_down_callback(right_key_down, TECLA_RIGHT);
+  key_down_callback(up_key_down, TECLA_UP);
+  key_down_callback(down_key_down, TECLA_DOWN);
+  
+  key_up_callback(select_key_up, TECLA_SELECT);
+  key_up_callback(left_key_up, TECLA_LEFT);
+  key_up_callback(right_key_up, TECLA_RIGHT);
+  key_up_callback(up_key_up, TECLA_UP);
+  key_up_callback(down_key_up, TECLA_DOWN);
+    
+}
+
+//Reinicia el timer
+void resetTimer(){
+  cs = 0;
+  s = 0;
+  noInterrupts();
+  TIMSK2 &= ~(1 << OCIE2A); //Disable timer compare interrupt
+  TCNT2  = 0;//initialize counter value to 0
+  TIMSK2 |= (1 << OCIE2A); //Enable timer compare interrupt
+  interrupts();
+  timerON = 1;
+}
+
+//Imprime en display los números del cronómetro
+void imprimirNumero(int num,int x) {
   if (num <= 9) {
     lcd.setCursor(x, posCronY);
     lcd.print("0");
@@ -91,26 +280,85 @@ void printNumero(int num,int x) {
   }
 }
 
-void printCronometro(void){
-  printNumero(m,posCronX);
+//Imprime en display el cronómetro con sus unidades de tiempo
+void imprimirCronometro() {   
+  imprimirNumero(m,posCronX);
   lcd.setCursor(posCronX+2, posCronY);
   lcd.print(":");
-  printNumero(s,posCronX+3);
+  imprimirNumero(s,posCronX+3);
   lcd.setCursor(posCronX+5, posCronY);
   lcd.print(":");
-  printNumero(cs,posCronX+6);
+  imprimirNumero(cs,posCronX+6);
 }
 
-void printBrillo(){
+//Imprime en display el tiempo guardado en la posición i
+void imprimirTiempoGuardado(int i)
+{
+  lcd.print(i);
+  imprimirNumero(tiempos[i][0],posCronX);
+  lcd.setCursor(posCronX+2, posCronY);
+  lcd.print(":");
+  imprimirNumero(tiempos[i][1],posCronX+3);
+  lcd.setCursor(posCronX+5, posCronY);
+  lcd.print(":");
+  imprimirNumero(tiempos[i][2],posCronX+6);
+  
+}
+
+
+//Imprime en display el mensaje inicial
+void imprimirInicio(void)
+{
+  lcd.setCursor(0, 0);
+  lcd.print("Sistemas Embebidos-2do Cuatrimestre 2019");
+  lcd.setCursor(0, 1);
+  lcd.print("Laboratorio 2 - Com: Fraysse / Carignano");
+  //for (int positionCounter = 0; positionCounter < 24; positionCounter++) {
+  if (positionCounter <24)
+  {    
+      // scroll one position left:
+      lcd.scrollDisplayLeft();     
+      positionCounter++;
+      // wait a bit:
+      delay(400);       
+  }
+  
+}
+
+//Imprime en display información del estado actual del sistema
+void mostrarEstado(){
+  switch(estadoActual){
+    case 1: // MCA      
+      lcd.setCursor(0,0);      
+      lcd.print("   Ascendente   ");
+      timerON = 0;
+      break;
+    case 2: // MP
+      lcd.setCursor(0,0);      
+      lcd.print("     Pausa      ");      
+      break;
+    case 3: // MVT
+      lcd.setCursor(0,0);      
+      lcd.print(" Visor Tiempos  ");      
+      break;
+    case 4: // MAD
+      lcd.setCursor(0,0);      
+      lcd.print(" Ajuste dimmer  ");      
+      break;
+  }
+}
+
+//Imprime en display información sobre el brillo del mismo
+void imprimirBrillo(){  
   lcd.setCursor(0, 1);
   lcd.print("       ");
-  lcd.print(brillo);
-  if(brillo == 100){
+  lcd.print(brightness);
+  if(brightness == 100){
     lcd.setCursor(10, 1);
     lcd.print("%     ");
   }
    else
-     if(brillo > 5){
+     if(brightness > 5){
        lcd.setCursor(9, 1);
        lcd.print("%     ");
      }
@@ -120,92 +368,81 @@ void printBrillo(){
      }
 }
 
-void printUlt10(int i){
-  printNumero(tiempos[i][0],posCronX);
-  lcd.setCursor(posCronX+2, posCronY);
-  lcd.print(":");
-  printNumero(tiempos[i][1],posCronX+3);
-  lcd.setCursor(posCronX+5, posCronY);
-  lcd.print(":");
-  printNumero(tiempos[i][2],posCronX+6); 
- }
-
-ISR(TIMER2_OVF_vect) {  //timer1 interrupt 8kHz toggles pin 9
-  TCNT2 = gettcnt2();  
-  /* Write to a digital pin so that we can confirm our timer */  
-  if (modo == 0) {
-    if(ms==10){
-      cs++;
-      ms=0;
-    }
-    if(cs==100){
-      s++;
-      cs=0;
-    }
-    if(s==60){
-      m++;
-      s=0;
-    }
-    ms++; 
+//Rutina del timer2
+ISR(TIMER2_COMPA_vect){
+  
+  if(timerON){
+        cs += 1;
+        if(cs >= 100){
+          cs = 0;
+          s += 1;
+    
+          if(estadoActual == 4){
+            dimmer++;
+        }
+    
+        if (s >=60)
+        {
+          s=0;
+          m += 1;       
+        }
+      }
   }
-  
-//  if(presionoSelect | MAD){
-//    dimmer++;
-//  }
-//
-//
-//  toggle = ~toggle;  
+  else{
+        if (pressingSelect ==1 )
+        {
+            cs_aux+=1;    
+            if (cs_aux>=100)
+            {
+              cs_aux=0;
+              dimmer++;
+            }          
+        }      
+      }   
 }
 
-void setup() {
-
-  // Setup LCD
-  pinMode(analogOutPin, OUTPUT);
-  lcd.begin(numCols,numRows);
-  analogWrite(analogOutPin, brillo); //Controla intensidad backlight
-  printInicio();
-  modo=3;
-  ms=0;
-  cs=0;
-  m=0;
-  s=0;
-  savepos=0;
-  visorpos=0;
-
-  timer_init();
-
-  //Inicialización driverTeclado
-  teclado_init();
-  fnqueue_init();
-
-  //Cuando se atienda la función encolada se va a ejecutar el callback correspondiente
-  key_down_callback(select_key_down, TECLA_SELECT);
-  key_down_callback(up_key_down, TECLA_UP);
-  key_down_callback(down_key_down, TECLA_DOWN);
-
-  
-}
-
+//Loop principal
 void loop() {
-  // put your main code here, to run repeatedly:
-  lcd.setCursor(0, 0);
-  switch(modo){
-    case 0: 
-      lcd.print("Conteo Ascendente");
-      printCronometro();
-      break;
-    case 1: 
-      lcd.print("      Pausa      ");
-      printCronometro();
-      break;
-    case 2:
-      lcd.print("  Visor Tiempos  ");
-      printUlt10(visorpos);
-      break;
-    case 3:
-      lcd.print("  Ajuste Dimmer  ");
-     //printBrillo();
-      break;
-  }
+  
   fnqueue_run();
+
+  // Modo mensaje inicial
+  if (estadoActual == 0)
+  {
+      //Imprime en display el mensaje inicial  
+      imprimirInicio();      
+  }
+   // Modo conteo ascendente
+  else if(estadoActual == 1){    
+    lcd.setCursor(0,1);
+    timerON=1;
+    imprimirCronometro();    
+  }
+  // Modo pausa
+  else if (estadoActual == 2){
+    lcd.setCursor(0,1);
+    timerON=0;
+    imprimirCronometro();
+  }
+  //Modo visor de tiempos
+  else if(estadoActual == 3){
+    lcd.setCursor(0,1);
+    imprimirTiempoGuardado(visorpos);
+  }
+  //Modo ajuste dimmer
+  else if (estadoActual == 4){
+    lcd.setCursor(0,1);
+    imprimirBrillo();
+    timerON=1;
+
+  //si no presiona tecla durante mas de 5 segundos vuelve a modo pausa
+    if(dimmer>=5)
+         {
+           estadoActual = 2;           
+           dimmer=0;
+           resetTimer();
+           mostrarEstado();
+         }
+  }
+  
 }

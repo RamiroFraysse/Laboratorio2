@@ -9,3 +9,6 @@ void teclado_init(void);
 
 //Asociar la funcion handler al evento de presionar la tecla.
 void key_down_callback(void (*handler)(), int tecla);
+
+//Asociar la funcion handler al evento de soltar la tecla.
+void key_up_callback(void (*handler)(), int tecla);
