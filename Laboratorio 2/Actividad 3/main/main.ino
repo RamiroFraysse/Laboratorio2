@@ -43,26 +43,20 @@ void up_key_down(){}
 void down_key_down(){}
 
 //soltar tecla down
-void down_key_up()
-{
-if (estadoActual == 0)
-{
-  estadoActual = 2;
-  cleanDisplay();
-  mostrarEstado();
-}
-else  
-if (estadoActual ==1 )
-{
+void down_key_up(){
+switch(estadoActual){
+  case 0:
+    estadoActual = 2;
+    cleanDisplay();
+    mostrarEstado();
+    break;
+  case 1:
     tiempos[savepos][0]=m;
     tiempos[savepos][1]=s;
     tiempos[savepos][2]=cs;
-    savepos=(savepos+1)%10;      
-}
-else
-{
-  if (estadoActual == 2)
-  {
+    savepos=(savepos+1)%10;
+    break;  
+  case 2:
     tiempos[savepos][0]=m;
     tiempos[savepos][1]=s;
     tiempos[savepos][2]=cs;
@@ -70,69 +64,46 @@ else
     ms=0;
     cs=0;
     m=0;
-    s=0;  
-  }
-  else{
-    if (estadoActual ==3)
-    {
-      visorpos=visorpos-1;
-      if(visorpos<0)
-         visorpos=9;
-    }
-     else
-     {
-     if (estadoActual ==4)
-      {
-        dimmer=0;
-          if (brightness>0)
-            brightness -= 51;
-            delay(100);
-          analogWrite(10, brightness);
-      }
-     }
-  }
+    s=0; 
+    break;
+  case 3:
+    visorpos=visorpos-1;
+    if(visorpos<0)
+       visorpos=9;
+  case 4:
+    dimmer=0;
+    if (brightness>0)
+       brightness -= 51;
+    delay(100);
+    analogWrite(10, brightness);
+    break;
 }
-
 }
 
 //soltar tecla up
 void up_key_up(){
-
-if (estadoActual == 0)
-{
-  estadoActual = 2;
-  cleanDisplay();
-}
-else  
-if(estadoActual == 1){
+switch(estadoActual){
+  case 0:
     estadoActual = 2;
-  }
-  else
-  {
-    if (estadoActual==2)
-    {
-      estadoActual = 1;
-    }
-    else
-    {
-      if (estadoActual== 3)
-      {
-        visorpos=(visorpos+1)%10;  
-      }
-      else
-      {
-      if (estadoActual ==4)
-      {
-        dimmer=0;
-        if (brightness<255)
-          brightness += 51;
-          delay(100);
-        analogWrite(10, brightness);
-      }
-      }
-    }
-    
-  }
+    cleanDisplay();
+    break;
+  case 1:
+    estadoActual = 2;
+    break;
+  case 2:
+    estadoActual = 1;
+    break;
+  case 3:
+    visorpos=(visorpos+1)%10;  
+    break;
+  case 4:
+    dimmer=0;
+    if (brightness<255)
+        brightness += 51;
+        delay(100);
+    analogWrite(10, brightness);
+    break;   
+}
   mostrarEstado();
 }
 
@@ -376,9 +347,8 @@ void imprimirBrillo(){
      }
 }
 
-//Rutina del timer2
-ISR(TIMER2_COMPA_vect){
-  
+//Funcion llamada por la rutina de interrupciones.
+void procesarTimer(){
   if(timerON){
         cs += 1;
         if(cs >= 100){
@@ -409,7 +379,12 @@ ISR(TIMER2_COMPA_vect){
       }   
 }
 
-//Loop principal
+//Rutina del timer2
+ISR(TIMER2_COMPA_vect){
+  fnqueue_add(procesarTimer);
+}
+
+//  principal
 void loop() {
   
   fnqueue_run();
