@@ -71,6 +71,7 @@ switch(estadoActual){
     visorpos=visorpos-1;
     if(visorpos<0)
        visorpos=9;
+    break;
   case 4:
     dimmer=0;
     if (brightness>0)
