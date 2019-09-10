@@ -26,6 +26,7 @@ const int analogOutPin = 10; // Analog output pin that the LED brightness is att
 
 int estadoActual = 0; //de 0 a 4, el 0 es para mostrar el mensaje inicial, el 1 MCA, 2 MP, 3 MVT, 4 MAD.
 volatile int timerON = 0; //estado del timer
+int cont=0;
 
 //presionar tecla select
 void select_key_down()
@@ -221,6 +222,8 @@ void setup() {
   key_up_callback(right_key_up, TECLA_RIGHT);
   key_up_callback(up_key_up, TECLA_UP);
   key_up_callback(down_key_up, TECLA_DOWN);
+
+  imprimirInicio();
     
 }
 
@@ -289,12 +292,12 @@ void imprimirInicio(void)
       lcd.scrollDisplayLeft();     
       positionCounter++;
       // wait a bit:
-      delay(400);       
-  }else{
-    if (positionCounter<48){
+      delay(200);   
+  }else if(estadoActual==0){
+    if (positionCounter<48 && estadoActual==0){
       lcd.scrollDisplayRight();
       positionCounter++;
-      delay(400);  
+      delay(200);
     }
   }
   
@@ -381,13 +384,11 @@ void procesarTimer(){
 
 //Rutina del timer2
 ISR(TIMER2_COMPA_vect){
+  fnqueue_add(modoActual);
   fnqueue_add(procesarTimer);
 }
 
-//  principal
-void loop() {
-  
-  fnqueue_run();
+void modoActual(){
 
   // Modo mensaje inicial
   if (estadoActual == 0)
@@ -428,4 +429,11 @@ void loop() {
          }
   }
   
+}
+
+//  principal
+void loop() {
+   fnqueue_run();
+
+
 }

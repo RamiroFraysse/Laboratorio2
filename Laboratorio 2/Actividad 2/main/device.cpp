@@ -45,7 +45,7 @@ int adc_init(void){
         //PRR – Power Reduction Register
         //Bit 0 – PRADC: Power Reduction ADC
         //Writing a logic one to this bit shuts down the ADC. The ADC must be disabled before shut down.
-        PRR &= ~(1 << PRADC);
+        //PRR &= ~(1 << PRADC);
         
         //ADCSRA – ADC Control and Status Register A
         //Bit 7 – ADEN: ADC Enable
