@@ -27,6 +27,7 @@ const int analogOutPin = 10; // Analog output pin that the LED brightness is att
 int estadoActual = 0; //de 0 a 4, el 0 es para mostrar el mensaje inicial, el 1 MCA, 2 MP, 3 MVT, 4 MAD.
 volatile int timerON = 0; //estado del timer
 int cont=0;
+int delay_inicio;
 
 //presionar tecla select
 void select_key_down()
@@ -197,6 +198,7 @@ void setup() {
   m=0;
   s=0;
   dimmer=0;
+  delay_inicio=0;
  
   //inicialización de flags  
   pressingSelect=0;
@@ -287,18 +289,20 @@ void imprimirInicio(void)
   lcd.setCursor(0, 1);
   lcd.print("Laboratorio 2 - Com: Fraysse / Carignano");
   
-  if (positionCounter <24)
+  if (positionCounter <24 && delay_inicio>50)
   {    
       // scroll one position left:
       lcd.scrollDisplayLeft();     
       positionCounter++;
+      delay_inicio=0;
       // wait a bit:
-      delay(200);   
+      //delay(200);   
   }else if(estadoActual==0){
-    if (positionCounter<48 && estadoActual==0){
+    if (positionCounter<48 && estadoActual==0 && delay_inicio>50){
       lcd.scrollDisplayRight();
       positionCounter++;
-      delay(200);
+      delay_inicio=0;
+      //delay(200);
     }
   }
   
@@ -380,7 +384,11 @@ void procesarTimer(){
               dimmer++;
             }          
         }      
-      }   
+      }
+  if (estadoActual == 0)
+  {
+    delay_inicio += 1;  
+  }   
 }
 
 //Rutina del timer2
